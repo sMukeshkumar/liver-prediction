@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — LiverCare AI{% endblock %}
+
+{% block extra_css %}
+<style>
+  .welcome-bar{
+    background:linear-gradient(135deg,rgba(0,194,255,.08),rgba(123,92,240,.08));
+    border:1px solid var(--border);border-radius:16px;padding:1.75rem 2rem;
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem
+  }
+  .welcome-text h2{font-size:1.4rem;font-weight:700}
+  .welcome-text p{color:var(--text-muted);font-size:.87rem;margin-top:.2rem}
+
+  /* ── Patient Prediction Cards ── */
+  .pred-card{
+    background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
+    overflow:hidden;transition:.25s;margin-bottom:1.25rem
+  }
+  .pred-card:hover{border-color:rgba(0,194,255,.25);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+
+  .pred-card-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:1rem 1.4rem;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:.75rem
+  }
+  .pred-patient-info{display:flex;align-items:center;gap:.9rem}
+  .pred-avatar{
+    width:42px;height:42px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:1rem;flex-shrink:0
+  }
+  .pred-avatar.pos{background:rgba(255,77,109,.15);color:var(--danger)}
+  .pred-avatar.neg{background:rgba(0,214,143,.15);color:var(--success)}
+  .pred-name{font-size:1rem;font-weight:700}
+  .pred-date{font-size:.75rem;color:var(--text-muted);margin-top:.1rem}
+
+  .pred-result-badge{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .result-label{
+    display:flex;align-items:center;gap:.45rem;padding:.35rem .9rem;
+    border-radius:8px;font-size:.82rem;font-weight:700
+  }
+  .result-label.pos{background:rgba(255,77,109,.12);color:var(--danger);border:1px solid rgba(255,77,109,.25)}
+  .result-label.neg{background:rgba(0,214,143,.12);color:var(--success);border:1px solid rgba(0,214,143,.25)}
+
+  /* ── Data grid inside card ── */
+  .pred-card-body{padding:1.2rem 1.4rem}
+  .pred-data-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+    gap:.7rem
+  }
+  .data-cell{
+    background:var(--bg-dark);border:1px solid var(--border);
+    border-radius:10px;padding:.65rem .85rem
+  }
+  .data-cell-label{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;
+                   letter-spacing:.05em;margin-bottom:.25rem}
+  .data-cell-val{font-size:.92rem;font-weight:700}
+
+  /* Probability bar */
+  .prob-row{display:flex;align-items:center;gap:.75rem;margin-top:1rem;
+            padding-top:1rem;border-top:1px solid var(--border)}
+  .prob-label{font-size:.78rem;color:var(--text-muted);min-width:110px}
+  .prob-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+  .prob-fill{height:100%;border-radius:4px}
+  .prob-pct{font-size:.82rem;font-weight:700;min-width:38px;text-align:right}
+
+  /* Stat cards */
+  .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+             padding:1.5rem;display:flex;align-items:center;gap:1rem}
+  .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;
+             justify-content:center;font-size:1.2rem;flex-shrink:0}
+  .stat-val{font-size:1.8rem;font-weight:800;line-height:1}
+  .stat-label{color:var(--text-muted);font-size:.82rem;margin-top:.25rem}
+
+  /* Filter bar */
+  .filter-bar{display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap}
+  .search-box{position:relative;flex:1;min-width:200px}
+  .search-box i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);
+                color:var(--text-muted);font-size:.85rem}
+  .search-box input{
+    width:100%;padding:.6rem 1rem .6rem 2.5rem;
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:10px;color:var(--text);font-size:.88rem;font-family:inherit
+  }
+  .search-box input:focus{outline:none;border-color:var(--accent)}
+  .filter-select{
+    padding:.6rem 1rem;background:var(--bg-card);border:1px solid var(--border);
+    border-radius:10px;color:var(--text);font-size:.88rem;font-family:inherit;cursor:pointer
+  }
+  .filter-select:focus{outline:none;border-color:var(--accent)}
+
+  /* Empty */
+  .empty-state{text-align:center;padding:4rem 2rem;color:var(--text-muted)}
+  .empty-state i{font-size:3rem;margin-bottom:1rem;opacity:.25;display:block}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <!-- Welcome -->
+  <div class="welcome-bar">
+    <div class="welcome-text">
+      <h2>Hello, {{ session.user_name }} 👋</h2>
+      <p>All patient predictions are listed below — each with full medical data.</p>
+    </div>
+    <a href="{{ url_for('predict') }}" class="btn btn-primary">
+      <i class="fa fa-plus"></i> New Prediction
+    </a>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="grid-4" style="margin-bottom:2rem">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(0,194,255,.1);color:var(--accent)">
+        <i class="fa fa-users"></i>
+      </div>
+      <div>
+        <div class="stat-val">{{ stats.total or 0 }}</div>
+        <div class="stat-label">Total Patients</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(255,77,109,.1);color:var(--danger)">
+        <i class="fa fa-triangle-exclamation"></i>
+      </div>
+      <div>
+        <div class="stat-val">{{ stats.positive or 0 }}</div>
+        <div class="stat-label">Cirrhosis Detected</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(0,214,143,.1);color:var(--success)">
+        <i class="fa fa-circle-check"></i>
+      </div>
+      <div>
+        <div class="stat-val">{{ stats.negative or 0 }}</div>
+        <div class="stat-label">Healthy Cases</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(123,92,240,.1);color:var(--accent2)">
+        <i class="fa fa-percent"></i>
+      </div>
+      <div>
+        <div class="stat-val">{{ stats.avg_prob or '—' }}{% if stats.avg_prob %}%{% endif %}</div>
+        <div class="stat-label">Avg Risk Probability</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Patient Records Section -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+    <h2 style="font-size:1.15rem;font-weight:700">
+      <i class="fa fa-file-medical" style="color:var(--accent)"></i>
+      Patient Prediction Records
+    </h2>
+    <span style="font-size:.85rem;color:var(--text-muted)" id="countLabel">
+      {{ predictions|length }} record{{ 's' if predictions|length != 1 else '' }}
+    </span>
+  </div>
+
+  {% if predictions %}
+
+  <!-- Search & Filter -->
+  <div class="filter-bar">
+    <div class="search-box">
+      <i class="fa fa-magnifying-glass"></i>
+      <input type="text" id="searchInput"
+             placeholder="Search by patient name…"
+             oninput="filterCards()"/>
+    </div>
+    <select class="filter-select" id="resultFilter" onchange="filterCards()">
+      <option value="">All Results</option>
+      <option value="Cirrhosis Detected">Cirrhosis Detected</option>
+      <option value="No Cirrhosis Detected">No Cirrhosis</option>
+    </select>
+    <select class="filter-select" id="riskFilter" onchange="filterCards()">
+      <option value="">All Risk Levels</option>
+      <option value="High">High Risk</option>
+      <option value="Medium">Medium Risk</option>
+      <option value="Low">Low Risk</option>
+    </select>
+  </div>
+
+  <!-- Prediction Cards -->
+  <div id="cardList">
+    {% for p in predictions %}
+    {% set is_pos = p.result == 'Cirrhosis Detected' %}
+    <div class="pred-card"
+         data-name="{{ (p.patient_name or '')|lower }}"
+         data-result="{{ p.result or '' }}"
+         data-risk="{{ p.risk_level or '' }}">
+
+      <!-- Card Header -->
+      <div class="pred-card-header">
+        <div class="pred-patient-info">
+          <!-- Avatar with first letter of name -->
+          <div class="pred-avatar {{ 'pos' if is_pos else 'neg' }}">
+            {{ (p.patient_name or 'P')[0]|upper }}
+          </div>
+          <div>
+            <div class="pred-name">
+              {{ p.patient_name if p.patient_name else '(No name recorded)' }}
+            </div>
+            <div class="pred-date">
+              <i class="fa fa-clock"></i>
+              {{ p.predicted_at[:16] if p.predicted_at else '—' }}
+              &nbsp;·&nbsp;
+              {% if p.gender %}<i class="fa fa-venus-mars"></i> {{ p.gender }} &nbsp;·&nbsp;{% endif %}
+              Age {{ p.age|int }}
+            </div>
+          </div>
+        </div>
+
+        <div class="pred-result-badge">
+          {% if p.risk_level == 'High' %}
+            <span class="badge badge-danger"><i class="fa fa-arrow-up"></i> High Risk</span>
+          {% elif p.risk_level == 'Medium' %}
+            <span class="badge badge-warning"><i class="fa fa-minus"></i> Medium Risk</span>
+          {% else %}
+            <span class="badge badge-success"><i class="fa fa-arrow-down"></i> Low Risk</span>
+          {% endif %}
+
+          <span class="result-label {{ 'pos' if is_pos else 'neg' }}">
+            {% if is_pos %}
+              <i class="fa fa-xmark-circle"></i> Cirrhosis Detected
+            {% else %}
+              <i class="fa fa-check-circle"></i> No Cirrhosis Detected
+            {% endif %}
+          </span>
+        </div>
+      </div>
+
+      <!-- Card Body — all 10 medical values -->
+      <div class="pred-card-body">
+        <div class="pred-data-grid">
+          <div class="data-cell">
+            <div class="data-cell-label">Total Bilirubin</div>
+            <div class="data-cell-val">{{ p.total_bili }}
+              <span style="font-size:.7rem;color:var(--text-muted);font-weight:400">mg/dL</span>
+            </div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">Direct Bilirubin</div>
+            <div class="data-cell-val">{{ p.direct_bili }}
+              <span style="font-size:.7rem;color:var(--text-muted);font-weight:400">mg/dL</span>
+            </div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">Alk. Phosphotase</div>
+            <div class="data-cell-val">{{ p.alk_phos|int }}
+              <span style="font-size:.7rem;color:var(--text-muted);font-weight:400">IU/L</span>
+            </div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">ALT (SGPT)</div>
+            <div class="data-cell-val">{{ p.ala_amino|int }}
+              <span style="font-size:.7rem;color:var(--text-muted);font-weight:400">IU/L</span>
+            </div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">AST (SGOT)</div>
+            <div class="data-cell-val">{{ p.asp_amino|int }}
+              <span style="font-size:.7rem;color:var(--text-muted);font-weight:400">IU/L</span>
+            </div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">Total Proteins</div>
+            <div class="data-cell-val">{{ p.total_prot }}
+              <span style="font-size:.7rem;color:var(--text-muted);font-weight:400">g/dL</span>
+            </div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">Albumin</div>
+            <div class="data-cell-val">{{ p.albumin }}
+              <span style="font-size:.7rem;color:var(--text-muted);font-weight:400">g/dL</span>
+            </div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">A/G Ratio</div>
+            <div class="data-cell-val">{{ p.ag_ratio }}</div>
+          </div>
+        </div>
+
+        <!-- Probability Bar -->
+        <div class="prob-row">
+          <span class="prob-label">
+            <i class="fa fa-gauge-high"></i> Risk Probability
+          </span>
+          <div class="prob-track">
+            <div class="prob-fill"
+                 style="width:{{ (p.probability*100)|round(1) }}%;
+                        background:{% if p.probability >= 0.70 %}var(--danger)
+                                   {% elif p.probability >= 0.45 %}#ffb020
+                                   {% else %}var(--success){% endif %}">
+            </div>
+          </div>
+          <span class="prob-pct"
+                style="color:{% if p.probability >= 0.70 %}var(--danger)
+                             {% elif p.probability >= 0.45 %}#ffb020
+                             {% else %}var(--success){% endif %}">
+            {{ (p.probability*100)|round(1) }}%
+          </span>
+        </div>
+      </div>
+
+    </div><!-- /pred-card -->
+    {% endfor %}
+  </div>
+
+  <!-- No results after filter -->
+  <div id="noResults" style="display:none" class="empty-state">
+    <i class="fa fa-magnifying-glass"></i>
+    <p>No predictions match your search or filter.</p>
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="empty-state"
+       style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px">
+    <i class="fa fa-file-medical"></i>
+    <p style="font-size:1rem;font-weight:600;margin-bottom:.4rem">No patient records yet</p>
+    <p style="font-size:.88rem;margin-bottom:1.5rem">
+      Run your first prediction to see full patient data here.
+    </p>
+    <a href="{{ url_for('predict') }}" class="btn btn-primary">
+      <i class="fa fa-plus"></i> New Prediction
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function filterCards(){
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const result = document.getElementById('resultFilter').value;
+    const risk   = document.getElementById('riskFilter').value;
+    const cards  = document.querySelectorAll('#cardList .pred-card');
+    let visible  = 0;
+
+    cards.forEach(card => {
+      const ok = (!search || card.dataset.name.includes(search))
+              && (!result || card.dataset.result === result)
+              && (!risk   || card.dataset.risk   === risk);
+      card.style.display = ok ? '' : 'none';
+      if(ok) visible++;
+    });
+
+    document.getElementById('countLabel').textContent =
+      visible + ' record' + (visible !== 1 ? 's' : '');
+    document.getElementById('noResults').style.display = visible === 0 ? 'block' : 'none';
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Liver Cirrhosis Prediction{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-dark:    #0b0f1a;
+      --bg-card:    #131929;
+      --bg-card2:   #1a2238;
+      --border:     #1e2d4a;
+      --accent:     #00c2ff;
+      --accent2:    #7b5cf0;
+      --success:    #00d68f;
+      --danger:     #ff4d6d;
+      --warning:    #ffb020;
+      --text:       #e8eaf6;
+      --text-muted: #8899b4;
+      --radius:     14px;
+      --shadow:     0 8px 32px rgba(0,0,0,0.45);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:var(--bg-dark);color:var(--text);min-height:100vh}
+    a{text-decoration:none;color:inherit}
+
+    /* ── Navbar ── */
+    .navbar{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 2rem;height:64px;
+      background:rgba(11,15,26,.92);backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;
+    }
+    .nav-brand{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.1rem}
+    .nav-brand .icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+      border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+    .nav-links{display:flex;gap:1.5rem;align-items:center}
+    .nav-links a{color:var(--text-muted);font-size:.9rem;font-weight:500;transition:.2s}
+    .nav-links a:hover,.nav-links a.active{color:var(--accent)}
+    .btn-nav{
+      padding:.45rem 1.1rem;border-radius:8px;font-size:.85rem;font-weight:600;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+      border:none;cursor:pointer;transition:.2s;
+    }
+    .btn-nav:hover{opacity:.85;transform:translateY(-1px)}
+
+    /* ── Flash messages ── */
+    .flash-container{padding:.75rem 2rem;display:flex;flex-direction:column;gap:.5rem}
+    .flash{padding:.75rem 1.25rem;border-radius:10px;font-size:.9rem;font-weight:500;
+           display:flex;align-items:center;gap:.6rem}
+    .flash.success{background:rgba(0,214,143,.12);border:1px solid var(--success);color:var(--success)}
+    .flash.error  {background:rgba(255,77,109,.12);border:1px solid var(--danger); color:var(--danger)}
+    .flash.warning{background:rgba(255,176,32,.12);border:1px solid var(--warning);color:var(--warning)}
+    .flash.info   {background:rgba(0,194,255,.12); border:1px solid var(--accent); color:var(--accent)}
+
+    /* ── Cards ── */
+    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;box-shadow:var(--shadow)}
+    .card-sm{padding:1.25rem}
+
+    /* ── Buttons ── */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+         padding:.65rem 1.5rem;border-radius:10px;font-size:.9rem;font-weight:600;
+         border:none;cursor:pointer;transition:.2s}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,194,255,.3)}
+    .btn-danger {background:linear-gradient(135deg,#ff4d6d,#c9184a);color:#fff}
+    .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-muted)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-lg{padding:.85rem 2rem;font-size:1rem}
+    .btn-block{width:100%}
+
+    /* ── Form elements ── */
+    .form-group{margin-bottom:1.25rem}
+    .form-group label{display:block;margin-bottom:.45rem;font-size:.85rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+    .form-control{
+      width:100%;padding:.7rem 1rem;
+      background:var(--bg-dark);border:1px solid var(--border);
+      border-radius:10px;color:var(--text);font-size:.9rem;font-family:inherit;
+      transition:.2s;
+    }
+    .form-control:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,194,255,.12)}
+    .form-control::placeholder{color:var(--text-muted)}
+    select.form-control{cursor:pointer}
+    .input-icon{position:relative}
+    .input-icon i{position:absolute;left:.95rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.85rem}
+    .input-icon .form-control{padding-left:2.5rem}
+
+    /* ── Table ── */
+    .table-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:.85rem}
+    th{padding:.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;
+       border-bottom:1px solid var(--border);text-transform:uppercase;font-size:.75rem;letter-spacing:.05em}
+    td{padding:.75rem 1rem;border-bottom:1px solid rgba(30,45,74,.6);color:var(--text)}
+    tr:hover td{background:rgba(255,255,255,.02)}
+
+    /* ── Badges ── */
+    .badge{padding:.25rem .65rem;border-radius:6px;font-size:.75rem;font-weight:600}
+    .badge-danger {background:rgba(255,77,109,.15);color:var(--danger)}
+    .badge-success{background:rgba(0,214,143,.15);color:var(--success)}
+    .badge-warning{background:rgba(255,176,32,.15);color:var(--warning)}
+
+    /* ── Page content wrapper ── */
+    .page{padding:2rem;max-width:1200px;margin:0 auto}
+    .page-title{font-size:1.6rem;font-weight:700;margin-bottom:.3rem}
+    .page-sub  {color:var(--text-muted);font-size:.9rem;margin-bottom:2rem}
+
+    /* ── Grid helpers ── */
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem}
+    @media(max-width:900px){.grid-4{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}}
+    @media(max-width:600px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}}
+
+    /* ── Stat card ── */
+    .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+               padding:1.5rem;display:flex;align-items:center;gap:1rem}
+    .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+    .stat-val {font-size:1.8rem;font-weight:800;line-height:1}
+    .stat-label{color:var(--text-muted);font-size:.82rem;margin-top:.25rem}
+
+    /* ── Misc ── */
+    .divider{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
+    .text-center{text-align:center}
+    .text-muted{color:var(--text-muted)}
+    .mt-1{margin-top:.5rem}.mt-2{margin-top:1rem}.mt-3{margin-top:1.5rem}
+    .mb-1{margin-bottom:.5rem}.mb-2{margin-bottom:1rem}
+    .gap-1{gap:.5rem}
+    footer{text-align:center;padding:2rem;color:var(--text-muted);font-size:.8rem;border-top:1px solid var(--border);margin-top:3rem}
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% if session.user_id %}
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="icon"><i class="fa-solid fa-liver" style="color:#fff"></i></div>
+    <span>LiverCare AI</span>
+  </div>
+  <div class="nav-links">
+    <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint=='dashboard' %}active{% endif %}">
+      <i class="fa fa-gauge-high"></i> Dashboard</a>
+    <a href="{{ url_for('predict') }}" class="{% if request.endpoint=='predict' %}active{% endif %}">
+      <i class="fa fa-stethoscope"></i> Predict</a>
+    <a href="{{ url_for('logout') }}" class="btn btn-nav">
+      <i class="fa fa-right-from-bracket"></i> Logout</a>
+  </div>
+</nav>
+{% endif %}
+
+{% with msgs = get_flashed_messages(with_categories=True) %}
+  {% if msgs %}
+  <div class="flash-container">
+    {% for cat, msg in msgs %}
+    <div class="flash {{ cat }}">
+      <i class="fa fa-circle-info"></i> {{ msg }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+<footer>© 2024 LiverCare AI — Liver Cirrhosis Prediction System</footer>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

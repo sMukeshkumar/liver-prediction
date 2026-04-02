@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Prediction Result — LiverCare AI{% endblock %}
+
+{% block extra_css %}
+<style>
+  .result-hero{border-radius:20px;padding:2.5rem;margin-bottom:2rem;
+               display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+  .result-hero.positive{
+    background:linear-gradient(135deg,rgba(255,77,109,.1),rgba(200,24,74,.05));
+    border:1px solid rgba(255,77,109,.3)
+  }
+  .result-hero.negative{
+    background:linear-gradient(135deg,rgba(0,214,143,.1),rgba(0,150,100,.05));
+    border:1px solid rgba(0,214,143,.3)
+  }
+  .result-icon{width:80px;height:80px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0}
+  .result-icon.pos{background:rgba(255,77,109,.2)}
+  .result-icon.neg{background:rgba(0,214,143,.2)}
+  .result-title{font-size:1.9rem;font-weight:900}
+  .result-title.pos{color:var(--danger)}
+  .result-title.neg{color:var(--success)}
+  .result-desc{color:var(--text-muted);font-size:.92rem;margin-top:.4rem}
+
+  /* Probability gauge */
+  .gauge-wrap{text-align:center}
+  .gauge-circle{position:relative;width:160px;height:160px;margin:0 auto}
+  .gauge-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gauge-pct{font-size:2rem;font-weight:900}
+  .gauge-sublbl{font-size:.75rem;color:var(--text-muted)}
+
+  /* Feature bar */
+  .feat-bar-wrap{margin-bottom:.9rem}
+  .feat-bar-label{display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem}
+  .feat-bar-track{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+  .feat-bar-fill{height:100%;border-radius:4px;transition:width .8s ease}
+
+  /* Input summary */
+  .input-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.8rem}
+  .input-item{background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem}
+  .input-item-lbl{font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem}
+  .input-item-val{font-size:1rem;font-weight:700}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:1000px">
+
+  <!-- Main result card -->
+  <div class="result-hero {{ 'positive' if result == 'Cirrhosis Detected' else 'negative' }}">
+    <div class="result-icon {{ 'pos' if result == 'Cirrhosis Detected' else 'neg' }}">
+      {% if result == 'Cirrhosis Detected' %}
+        <i class="fa fa-triangle-exclamation" style="color:var(--danger)"></i>
+      {% else %}
+        <i class="fa fa-circle-check" style="color:var(--success)"></i>
+      {% endif %}
+    </div>
+    <div style="flex:1">
+      <div class="result-title {{ 'pos' if result == 'Cirrhosis Detected' else 'neg' }}">{{ result }}</div>
+      <div style="color:var(--text-muted);font-size:.85rem;margin-top:.3rem;margin-bottom:.15rem">
+        <i class="fa fa-user-injured"></i> Patient: <strong style="color:var(--text)">{{ patient_name }}</strong>
+      </div>
+      <div class="result-desc">
+        {% if result == 'Cirrhosis Detected' %}
+          The model predicts a <strong>{{ risk_level }} risk</strong> of liver cirrhosis based on the provided parameters.
+          This result should be confirmed with further clinical investigation and specialist consultation.
+        {% else %}
+          The model predicts <strong>no signs of liver cirrhosis</strong> based on the provided parameters.
+          Regular monitoring is still recommended. Consult a physician for clinical confirmation.
+        {% endif %}
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:.8rem;flex-wrap:wrap">
+        <span class="badge {% if risk_level=='High' %}badge-danger{% elif risk_level=='Medium' %}badge-warning{% else %}badge-success{% endif %}" style="font-size:.85rem;padding:.35rem .9rem">
+          <i class="fa fa-shield-halved"></i> {{ risk_level }} Risk
+        </span>
+        <span class="badge" style="background:rgba(0,194,255,.12);color:var(--accent);font-size:.85rem;padding:.35rem .9rem">
+          <i class="fa fa-percent"></i> {{ probability }}% Probability
+        </span>
+      </div>
+    </div>
+
+    <!-- Gauge -->
+    <div class="gauge-wrap">
+      <div class="gauge-circle">
+        <canvas id="gaugeChart" width="160" height="160"></canvas>
+        <div class="gauge-label">
+          <div class="gauge-pct" style="color:{% if result=='Cirrhosis Detected' %}var(--danger){% else %}var(--success){% endif %}">{{ probability }}%</div>
+          <div class="gauge-sublbl">Risk Score</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:1.5rem">
+    <!-- Feature Importance -->
+    <div class="card">
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem">
+        <i class="fa fa-bar-chart" style="color:var(--accent2)"></i> Top Contributing Features
+      </h3>
+      {% set colors = ['var(--accent)','var(--accent2)','var(--success)','#ffb020','var(--danger)'] %}
+      {% for feat, imp in top_features %}
+      <div class="feat-bar-wrap">
+        <div class="feat-bar-label">
+          <span>{{ feat.replace('_',' ') }}</span>
+          <span style="color:var(--text-muted)">{{ (imp*100)|round(1) }}%</span>
+        </div>
+        <div class="feat-bar-track">
+          <div class="feat-bar-fill" style="width:{{ (imp*100)|round(1) }}%;background:{{ colors[loop.index0] }}"></div>
+        </div>
+      </div>
+      {% endfor %}
+      <p style="font-size:.78rem;color:var(--text-muted);margin-top:.75rem">
+        <i class="fa fa-circle-info"></i> Feature importance from the Random Forest model (global, not patient-specific).
+      </p>
+    </div>
+
+    <!-- Risk Interpretation -->
+    <div class="card">
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem">
+        <i class="fa fa-book-medical" style="color:var(--success)"></i> Clinical Interpretation
+      </h3>
+      {% if result == 'Cirrhosis Detected' %}
+      <div style="display:flex;flex-direction:column;gap:.9rem;font-size:.85rem">
+        <div style="background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);border-radius:10px;padding:1rem">
+          <div style="font-weight:700;color:var(--danger);margin-bottom:.4rem"><i class="fa fa-exclamation-circle"></i> Action Required</div>
+          <div style="color:var(--text-muted)">Immediate consultation with a hepatologist or gastroenterologist is recommended.</div>
+        </div>
+        <div style="color:var(--text-muted);line-height:1.7">
+          <p>Suggested next steps:</p>
+          <ul style="padding-left:1.2rem;margin-top:.4rem">
+            <li>Liver biopsy for definitive diagnosis</li>
+            <li>Fibroscan (transient elastography)</li>
+            <li>Ultrasound of the abdomen</li>
+            <li>Complete metabolic panel review</li>
+          </ul>
+        </div>
+      </div>
+      {% else %}
+      <div style="display:flex;flex-direction:column;gap:.9rem;font-size:.85rem">
+        <div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:1rem">
+          <div style="font-weight:700;color:var(--success);margin-bottom:.4rem"><i class="fa fa-circle-check"></i> Low Risk Detected</div>
+          <div style="color:var(--text-muted)">Parameters suggest no significant liver disease. Continue routine monitoring.</div>
+        </div>
+        <div style="color:var(--text-muted);line-height:1.7">
+          <p>Recommended follow-up:</p>
+          <ul style="padding-left:1.2rem;margin-top:.4rem">
+            <li>Annual liver function tests</li>
+            <li>Maintain healthy diet & exercise</li>
+            <li>Avoid excessive alcohol</li>
+            <li>Retest if symptoms develop</li>
+          </ul>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Input Summary -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem">
+      <i class="fa fa-list-check" style="color:var(--accent)"></i> Input Parameters Summary
+    </h3>
+    <div class="input-grid">
+      <div class="input-item" style="grid-column:1/-1">
+        <div class="input-item-lbl">Patient Name</div>
+        <div class="input-item-val">{{ patient_name }}</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">Age</div>
+        <div class="input-item-val">{{ input_data['Age']|int }} yrs</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">Gender</div>
+        <div class="input-item-val">{{ gender_label }}</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">Total Bilirubin</div>
+        <div class="input-item-val">{{ input_data['Total_Bilirubin'] }} mg/dL</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">Direct Bilirubin</div>
+        <div class="input-item-val">{{ input_data['Direct_Bilirubin'] }} mg/dL</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">Alk. Phosphotase</div>
+        <div class="input-item-val">{{ input_data['Alkaline_Phosphotase']|int }} IU/L</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">ALT (SGPT)</div>
+        <div class="input-item-val">{{ input_data['Alamine_Aminotransferase']|int }} IU/L</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">AST (SGOT)</div>
+        <div class="input-item-val">{{ input_data['Aspartate_Aminotransferase']|int }} IU/L</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">Total Proteins</div>
+        <div class="input-item-val">{{ input_data['Total_Protiens'] }} g/dL</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">Albumin</div>
+        <div class="input-item-val">{{ input_data['Albumin'] }} g/dL</div>
+      </div>
+      <div class="input-item">
+        <div class="input-item-lbl">A/G Ratio</div>
+        <div class="input-item-val">{{ input_data['Albumin_and_Globulin_Ratio'] }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div style="display:flex;gap:1rem;flex-wrap:wrap">
+    <a href="{{ url_for('predict') }}" class="btn btn-primary">
+      <i class="fa fa-plus"></i> New Prediction
+    </a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline">
+      <i class="fa fa-gauge-high"></i> Back to Dashboard
+    </a>
+    <button onclick="window.print()" class="btn btn-outline">
+      <i class="fa fa-print"></i> Print Report
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+  const prob = {{ probability }};
+  const isPositive = {{ 'true' if result == 'Cirrhosis Detected' else 'false' }};
+  const color = isPositive ? '#ff4d6d' : '#00d68f';
+
+  new Chart(document.getElementById('gaugeChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      datasets:[{
+        data:[prob, 100-prob],
+        backgroundColor:[color,'rgba(30,45,74,.4)'],
+        borderWidth:0,
+        circumference:270,
+        rotation:225,
+      }]
+    },
+    options:{responsive:false,plugins:{legend:{display:false},tooltip:{enabled:false}},cutout:'72%'}
+  });
+
+  // Animate bars
+  document.querySelectorAll('.feat-bar-fill').forEach(el=>{
+    const w=el.style.width; el.style.width='0';
+    setTimeout(()=>{el.style.width=w;},200);
+  });
+</script>
+{% endblock %}

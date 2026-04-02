@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}New Prediction — LiverCare AI{% endblock %}
+
+{% block extra_css %}
+<style>
+  .predict-header{background:linear-gradient(135deg,rgba(0,194,255,.08),rgba(123,92,240,.08));
+                  border:1px solid var(--border);border-radius:16px;padding:1.75rem 2rem;margin-bottom:2rem}
+  .section-heading{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+                   color:var(--accent);margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem}
+  .section-heading::after{content:'';flex:1;height:1px;background:var(--border)}
+  .field-hint{font-size:.75rem;color:var(--text-muted);margin-top:.3rem}
+  .range-display{display:flex;justify-content:space-between;font-size:.75rem;color:var(--text-muted);margin-top:.2rem}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+  .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem}
+  @media(max-width:700px){.form-grid,.form-grid-3{grid-template-columns:1fr}}
+  .info-sidebar{position:sticky;top:80px}
+  .ref-table td{padding:.45rem .5rem;font-size:.8rem;border-bottom:1px solid rgba(30,45,74,.4)}
+  .ref-table td:first-child{color:var(--text-muted)}
+  .ref-table td:last-child{color:var(--text);font-weight:500;text-align:right}
+  .submit-section{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+                  padding:1.75rem;margin-top:1.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+  .disclaimer{flex:1;font-size:.78rem;color:var(--text-muted);line-height:1.5}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:1100px">
+  <div class="predict-header">
+    <h1 class="page-title"><i class="fa fa-stethoscope" style="color:var(--accent)"></i> New Liver Cirrhosis Prediction</h1>
+    <p class="page-sub">Enter patient medical parameters below. All fields are required.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:1.75rem;align-items:start">
+    <!-- Main Form -->
+    <div>
+      <form method="POST" action="{{ url_for('predict') }}" id="predictForm">
+
+        <!-- Patient Info -->
+        <div class="card" style="margin-bottom:1.5rem">
+          <div class="section-heading"><i class="fa fa-user-injured"></i> Patient Information</div>
+
+          <!-- Patient Name — full width row -->
+          <div class="form-group">
+            <label>Patient Name <span style="color:var(--danger)">*</span></label>
+            <div class="input-icon">
+              <i class="fa fa-user"></i>
+              <input type="text" name="patient_name" class="form-control"
+                     placeholder="e.g. Ramesh Kumar"
+                     required autocomplete="off"
+                     style="font-size:1rem;padding:.8rem 1rem .8rem 2.6rem"/>
+            </div>
+            <div class="field-hint"><i class="fa fa-circle-info"></i> Enter the full name of the patient for identification</div>
+          </div>
+
+          <!-- Age + Gender side by side -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Age (years) <span style="color:var(--danger)">*</span></label>
+              <input type="number" name="age" class="form-control" placeholder="e.g. 45" min="1" max="100" required/>
+              <div class="field-hint">Patient age between 1–100</div>
+            </div>
+            <div class="form-group">
+              <label>Gender <span style="color:var(--danger)">*</span></label>
+              <select name="gender" class="form-control" required>
+                <option value="" disabled selected>Select gender</option>
+                <option>Male</option>
+                <option>Female</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bilirubin -->
+        <div class="card" style="margin-bottom:1.5rem">
+          <div class="section-heading"><i class="fa fa-vial"></i> Bilirubin Levels (mg/dL)</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Total Bilirubin</label>
+              <input type="number" name="total_bilirubin" class="form-control" placeholder="e.g. 0.7" min="0" max="100" step="0.01" required/>
+              <div class="field-hint">Normal: 0.2 – 1.2 mg/dL</div>
+            </div>
+            <div class="form-group">
+              <label>Direct Bilirubin</label>
+              <input type="number" name="direct_bilirubin" class="form-control" placeholder="e.g. 0.1" min="0" max="50" step="0.01" required/>
+              <div class="field-hint">Normal: 0.0 – 0.3 mg/dL</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Liver Enzymes -->
+        <div class="card" style="margin-bottom:1.5rem">
+          <div class="section-heading"><i class="fa fa-flask"></i> Liver Enzymes (IU/L)</div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label>Alkaline Phosphotase</label>
+              <input type="number" name="alkaline_phosphotase" class="form-control" placeholder="e.g. 187" min="0" max="2000" required/>
+              <div class="field-hint">Normal: 44 – 147 IU/L</div>
+            </div>
+            <div class="form-group">
+              <label>Alamine Aminotransferase</label>
+              <input type="number" name="alamine_aminotransferase" class="form-control" placeholder="e.g. 16" min="0" max="2000" required/>
+              <div class="field-hint">Normal: 7 – 56 IU/L</div>
+            </div>
+            <div class="form-group">
+              <label>Aspartate Aminotransferase</label>
+              <input type="number" name="aspartate_aminotransferase" class="form-control" placeholder="e.g. 18" min="0" max="2000" required/>
+              <div class="field-hint">Normal: 10 – 40 IU/L</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Protein & Albumin -->
+        <div class="card" style="margin-bottom:1.5rem">
+          <div class="section-heading"><i class="fa fa-dna"></i> Protein & Albumin Parameters</div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label>Total Proteins (g/dL)</label>
+              <input type="number" name="total_proteins" class="form-control" placeholder="e.g. 6.8" min="0" max="20" step="0.01" required/>
+              <div class="field-hint">Normal: 6.3 – 8.2 g/dL</div>
+            </div>
+            <div class="form-group">
+              <label>Albumin (g/dL)</label>
+              <input type="number" name="albumin" class="form-control" placeholder="e.g. 3.3" min="0" max="10" step="0.01" required/>
+              <div class="field-hint">Normal: 3.5 – 5.0 g/dL</div>
+            </div>
+            <div class="form-group">
+              <label>Albumin/Globulin Ratio</label>
+              <input type="number" name="albumin_globulin_ratio" class="form-control" placeholder="e.g. 0.9" min="0" max="5" step="0.01" required/>
+              <div class="field-hint">Normal: 1.0 – 2.5</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="submit-section">
+          <div class="disclaimer">
+            <i class="fa fa-circle-info" style="color:var(--accent)"></i>
+            <strong> Disclaimer:</strong> This tool is for clinical decision support only. Results should be
+            interpreted by a qualified medical professional.
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+            <i class="fa fa-magnifying-glass-chart"></i> Analyze & Predict
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="info-sidebar">
+      <div class="card card-sm" style="margin-bottom:1rem">
+        <div style="font-size:.9rem;font-weight:700;margin-bottom:1rem;color:var(--accent)">
+          <i class="fa fa-book-medical"></i> Normal Reference Ranges
+        </div>
+        <table class="ref-table" style="width:100%">
+          <tr><td>Total Bilirubin</td><td>0.2–1.2 mg/dL</td></tr>
+          <tr><td>Direct Bilirubin</td><td>0.0–0.3 mg/dL</td></tr>
+          <tr><td>Alk. Phosphotase</td><td>44–147 IU/L</td></tr>
+          <tr><td>ALT (SGPT)</td><td>7–56 IU/L</td></tr>
+          <tr><td>AST (SGOT)</td><td>10–40 IU/L</td></tr>
+          <tr><td>Total Proteins</td><td>6.3–8.2 g/dL</td></tr>
+          <tr><td>Albumin</td><td>3.5–5.0 g/dL</td></tr>
+          <tr><td>A/G Ratio</td><td>1.0–2.5</td></tr>
+        </table>
+      </div>
+
+      <div class="card card-sm">
+        <div style="font-size:.9rem;font-weight:700;margin-bottom:1rem;color:var(--accent2)">
+          <i class="fa fa-shield-halved"></i> Risk Levels
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.7rem;font-size:.82rem">
+          <div style="display:flex;align-items:center;gap:.7rem">
+            <span class="badge badge-danger" style="min-width:60px;text-align:center">High</span>
+            <span style="color:var(--text-muted)">≥70% probability. Immediate clinical attention recommended.</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.7rem">
+            <span class="badge badge-warning" style="min-width:60px;text-align:center">Medium</span>
+            <span style="color:var(--text-muted)">45–70%. Follow-up tests advised.</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.7rem">
+            <span class="badge badge-success" style="min-width:60px;text-align:center">Low</span>
+            <span style="color:var(--text-muted)">&lt;45%. Low risk, monitor regularly.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('predictForm').addEventListener('submit',function(){
+    const btn = document.getElementById('submitBtn');
+    btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Analyzing...';
+    btn.disabled=true;
+  });
+</script>
+{% endblock %}
